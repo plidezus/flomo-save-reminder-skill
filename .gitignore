@@ -1,0 +1,6 @@
+**/*.local.md
+.DS_Store
+samples/
+exports/
+raw-memos/
+*.log

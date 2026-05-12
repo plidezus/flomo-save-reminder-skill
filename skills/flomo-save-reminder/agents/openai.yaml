@@ -1,0 +1,4 @@
+interface:
+  display_name: "flomo 保存提醒"
+  short_description: "先检查或生成用户画像，再把值得保存的对话整理成 flomo memo 草稿。"
+  default_prompt: "用 flomo 保存提醒判断这段对话里是否有值得记进 flomo 的内容；先检查或生成 user-style 用户画像，再按我的 memo 风格整理。"
