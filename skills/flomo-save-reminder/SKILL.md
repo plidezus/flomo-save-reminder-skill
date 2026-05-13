@@ -1,6 +1,6 @@
 ---
 name: flomo-save-reminder
-description: 面向中文 flomo 用户的“保存提醒”技能。用于用户明确要求保存、整理成 flomo memo、扫描当前对话里是否有值得保存的内容，或已授权本轮进行保存提醒时。触发后先检查或生成 user-style 用户画像，再按用户已有 memo 风格整理草稿，并在写入前确认。不要仅因普通对话里出现观点、感受或灵感就主动调用。
+description: 面向中文 flomo 用户的“保存提醒”技能。仅在用户明确要求保存、整理成 flomo memo、扫描当前对话里是否有值得保存的内容，或已授权本轮进行保存提醒时使用。触发后读取共享 flomo 用户表达画像和本 skill 状态，按用户已有 memo 风格整理草稿，并在写入前确认。不要仅因普通对话里出现观点、感受或灵感就主动调用。
 ---
 
 # flomo 保存提醒
@@ -13,45 +13,58 @@ description: 面向中文 flomo 用户的“保存提醒”技能。用于用户
 
 ## 文件结构
 
-本 skill 分成两部分：
+本 skill 分成三部分：
 
 - `SKILL.md`：稳定协议，写判断、提醒、采样、写入边界。
-- `user-style.md`：可选用户画像缓存，写从当前用户 flomo 中学到的格式、标签和提醒偏好。
+- `../flomo-shared/user-style.md`：共享 flomo 用户表达画像，写从真实 memo 中学到的格式、标签、长度、保存倾向和草稿风格。
+- `state.md`：本 skill 的交互状态，写保存提醒主动性、确认策略和自动保存边界。
 
-不要把具体用户的标签、口癖、私人内容写进 `SKILL.md`。这些只应该进入 `user-style.md` 或运行时上下文。
+不要把具体用户的标签、口癖、私人内容写进 `SKILL.md`。这些只应该进入共享表达画像、`state.md` 或运行时上下文。
+
+旧路径 `user-style.md` 只作为迁移说明保留，不再作为主画像来源。
 
 ## 启动检查
 
-每次使用本 skill 且需要按用户风格生成 memo 草稿前，必须先读取 `user-style.md` 并判断画像状态：
+每次使用本 skill 且需要按用户风格生成 memo 草稿前，必须先读取：
+
+1. `state.md`，判断保存提醒模式。
+2. `../flomo-shared/user-style.md`，判断共享表达画像状态。
+
+`state.md` 状态：
+
+- 文件不存在、为空、`state_status` 不是 `configured`，或 `reminder_mode` 为空：`needs_setup`。
+- `state_status: configured` 且 `reminder_mode` 有效：`ready`。
+
+共享表达画像状态：
 
 - 文件不存在：`missing`。
 - 文件为空、仍包含“待生成”、`profile_status: empty`，或 `updated_at` 为空：`empty`。
-- `reminder_mode: unset`：`needs_setup`。
 - 缺少 `updated_at: YYYY-MM-DD`，或日期无法解析：`invalid`。
 - `updated_at` 距当前日期超过 30 天：`stale`。
 - `profile_status: generated`，`updated_at` 距当前日期不超过 30 天，且没有模板占位：`fresh`。
 
 根据状态处理：
 
-- `fresh`：直接读取 `user-style.md`。
-- `missing` / `empty` / `needs_setup`：先做首次设置，再尝试生成画像。
+- `state ready` + `profile fresh`：直接读取共享表达画像和 `state.md`。
+- `state needs_setup`：先做首次设置，只写入 `state.md`。
+- `profile missing` / `profile empty`：尝试生成共享表达画像，再继续当前任务。
 - `stale`：继续当前任务，不阻塞；任务结束后或用户同意时刷新画像。
 - `invalid`：不要相信当前画像，先尝试修复或重建。
 
-不得在没有检查画像状态的情况下直接走 fallback。
+不得在没有检查 `state.md` 和共享表达画像状态的情况下直接走 fallback。
 
 fallback 只能作为降级路径，且必须满足至少一个条件：
 
 - flomo MCP 不可用。
 - memory 和 memo 采样都失败。
-- 当前环境不能写入 `user-style.md`。
+- 当前环境不能写入共享表达画像或 `state.md`。
 - 用户明确要求“先别读取我的笔记，直接给草稿”。
 
-进入 fallback 时要明说：没有成功读取或生成用户画像，所以这次使用保守草稿。
+进入 fallback 时要明说：没有成功读取或生成共享表达画像，所以这次使用保守草稿。
 
 ## 首次设置
 
-如果 `user-style.md` 中 `reminder_mode: unset`，先问用户一个简短问题，不要先读取 flomo memo 样本：
+如果 `state.md` 缺失或 `reminder_mode` 未设置，先问用户一个简短问题，不要先读取 flomo memo 样本：
 
 ```markdown
 你希望 flomo 保存提醒怎么工作？
@@ -61,7 +74,7 @@ fallback 只能作为降级路径，且必须满足至少一个条件：
 3. 本轮对话里，看到特别值得留的内容可以轻提醒
 ```
 
-根据用户选择写入 `user-style.md`：
+根据用户选择写入 `state.md`：
 
 - `explicit_only`：只在用户明确说保存、记一下、整理成 flomo 时使用。
 - `scan_on_request`：用户要求扫描当前对话时，集中判断哪些内容值得保存。
@@ -123,8 +136,9 @@ fallback 只能作为降级路径，且必须满足至少一个条件：
 1. **用户明确指令**
    - 用户指定标签、格式、保存目标时，优先遵守。
 
-2. **`user-style.md`**
-   - 主要用于 memo 格式、标签习惯、长度、提醒偏好。
+2. **共享表达画像**
+   - 读取 `../flomo-shared/user-style.md`。
+   - 主要用于 memo 格式、标签习惯、长度、保存价值判断和草稿风格。
    - 如果存在且未过期，优先读取。
 
 3. **flomo MCP memory 接口**
@@ -139,20 +153,22 @@ fallback 只能作为降级路径，且必须满足至少一个条件：
 5. **冷启动默认规则**
    - 如果没有 memory，也无法读 memo，则使用保守短 memo 草稿，不强行打标签。
 
-## 用户画像缓存
+## 共享表达画像
 
-`user-style.md` 是可自动更新的用户风格画像。它应该只保存统计和规则，不保存大段原始 memo。
+`../flomo-shared/user-style.md` 是 flomo 相关 skills 共用的用户表达画像。它应该只保存统计和规则，不保存大段原始 memo，也不保存本 skill 的 `reminder_mode`、自动保存策略或确认策略。
+
+本 skill 自己的保存提醒偏好只写入 `state.md`。
 
 读取策略：
 
-- 如果 `user-style.md` 存在且 `updated_at` 距今不超过 30 天，直接使用。
+- 如果共享表达画像存在且 `updated_at` 距今不超过 30 天，直接使用。
 - 如果不存在、`profile_status: empty`、`updated_at` 为空，或内容仍是模板占位，必须先尝试生成，再继续当前任务。
 - 如果超过 30 天，视为过期：
   - 用户只是普通对话时，不打断，可先使用旧画像。
   - 用户明确要求保存时，不因为画像过期而阻塞保存；先用旧画像 + 少量相似 memo 辅助。
   - 任务结束后或用户同意时，再刷新画像。
 - 如果草稿连续不符合用户风格、标签明显不准，或用户近期记录主题明显变化，即使未满 30 天也可以提前刷新。
-- 如果用户说“更新我的风格”“重新学习我的 flomo”，立即刷新画像。
+- 如果用户说“更新我的风格”“重新学习我的 flomo”，立即刷新共享表达画像。
 
 ## MCP memory 处理规则
 
@@ -161,13 +177,13 @@ fallback 只能作为降级路径，且必须满足至少一个条件：
 - 优先轻量读取 `memory_user`，获得稳定偏好、身份、禁区和长期关注。
 - 只在需要理解当前话题时读取 `memory_context`，不要每次提醒都重查。
 - memory 只负责“别误解用户”，不负责“替用户写成 memo”。
-- 标签、格式、长度、语气仍以 `user-style.md` 和真实 memo 采样为准。
-- memory 可以辅助生成 `user-style.md`，但只有和 memo 样本一致时才写入画像。
+- 标签、格式、长度、语气仍以共享表达画像和真实 memo 采样为准。
+- memory 可以辅助生成共享表达画像，但只有和 memo 样本一致时才写入画像。
 
 如果 flomo MCP 没有 memory 接口，或接口鉴权失败、超时、返回为空：
 
 - 不阻塞保存提醒。
-- 先读 `user-style.md`。
+- 先读共享表达画像。
 - 画像缺失或过期时，用少量 memo 采样补足。
 - memo 也无法读取时，使用保守短草稿，并明确说明没有读取到用户样本。
 - 不要假装已经读取 memory，也不要把通用推断写成用户画像。
@@ -175,13 +191,17 @@ fallback 只能作为降级路径，且必须满足至少一个条件：
 推荐画像内容：
 
 ```markdown
-# flomo 用户风格画像
+# flomo 用户表达画像
 
 profile_status: generated
-reminder_mode: scan_on_request
+profile_kind: flomo_expression_profile
+schema_version: 2
 updated_at: YYYY-MM-DD
 sample_window: YYYY-MM-DD 至 YYYY-MM-DD
 sample_count: 50
+
+## 定义
+- 这份文件只描述用户在 flomo 中的记录方式、标签习惯、内容选择和表达偏好。
 
 ## 保存倾向
 - ...
@@ -192,14 +212,17 @@ sample_count: 50
 ## 标签习惯
 - ...
 
-## 提醒偏好
-- 适合提醒：...
-- 不适合提醒：...
+## 保存价值判断
+- 适合保存：...
+- 不适合保存：...
+
+## 维护规则
+- 不保存 `reminder_mode`、`echo_mode`、自动保存、提醒频率等 skill 状态。
 ```
 
 ## 画像生成采样
 
-需要生成或刷新 `user-style.md` 时，按这个顺序采样：
+需要生成或刷新共享表达画像时，按这个顺序采样：
 
 1. 最近 3-6 个月随机 memo 20-50 条：学习长期但仍当前的写作习惯。
 2. 最近 7-14 天 memo 5-10 条：理解当前上下文。
@@ -219,17 +242,19 @@ sample_count: 50
 - 语气是口语、克制、正式、反思，还是行动导向。
 - 常见长度：一句话、3 条 bullet、一小段，还是更长。
 
-生成后必须写回 `user-style.md`，并填写：
+生成后必须写回 `../flomo-shared/user-style.md`，并填写：
 
 - `profile_status: generated`
-- `reminder_mode`
+- `profile_kind: flomo_expression_profile`
+- `schema_version`
 - `updated_at`
 - `sample_window`
 - `sample_count`
 - 保存倾向
 - 格式习惯
 - 标签习惯
-- 提醒偏好
+- 草稿风格
+- 保存价值判断
 
 如果无法写回，必须说明原因，不要假装已经生成画像。
 
@@ -241,7 +266,7 @@ sample_count: 50
 
 1. 用户明确指定的标签。
 2. 相似 memo 中反复出现的标签。
-3. `user-style.md` 中记录的高置信常用标签。
+3. 共享表达画像中记录的高置信常用标签。
 4. 目标 memo 内容中自然出现且用户历史中存在的标签。
 5. 置信度不足时，少打标签或不打标签。
 
@@ -347,7 +372,7 @@ sample_count: 50
 ## 失败处理
 
 - 如果 flomo MCP memory 接口不可用：跳过 memory，尝试 memo 采样。
-- 如果画像缺失、为空或过期：必须先尝试生成或刷新画像；只有采样或写回失败后，才可以降级。
+- 如果共享表达画像缺失、为空或过期：必须先尝试生成或刷新画像；只有采样或写回失败后，才可以降级。
 - 如果 memo 采样不可用：说明无法读取样本，给出保守草稿，不伪装已生成用户画像。
 - 如果写入工具不可用：给出草稿，并说明没有写入。
 - 如果格式不确定：先用保守短 memo，不发明复杂结构。
