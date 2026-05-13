@@ -1,6 +1,6 @@
 ---
 name: flomo-save-reminder
-description: 面向中文 flomo 用户的“保存提醒”技能。用于在 AI 对话中发现值得记进 flomo 的内容，先检查或生成 user-style 用户画像，再按用户已有 memo 风格整理成草稿，并在写入前轻量询问。适用于用户说“记一下”“保存到 flomo”“这条值得记”，或对话中出现值得回看的想法、感受、经历、阅读启发、交流反馈、工作经验、个人原则、可复用表达等内容。
+description: 面向中文 flomo 用户的“保存提醒”技能。用于用户明确要求保存、整理成 flomo memo、扫描当前对话里是否有值得保存的内容，或已授权本轮进行保存提醒时。触发后先检查或生成 user-style 用户画像，再按用户已有 memo 风格整理草稿，并在写入前确认。不要仅因普通对话里出现观点、感受或灵感就主动调用。
 ---
 
 # flomo 保存提醒
@@ -26,6 +26,7 @@ description: 面向中文 flomo 用户的“保存提醒”技能。用于在 AI
 
 - 文件不存在：`missing`。
 - 文件为空、仍包含“待生成”、`profile_status: empty`，或 `updated_at` 为空：`empty`。
+- `reminder_mode: unset`：`needs_setup`。
 - 缺少 `updated_at: YYYY-MM-DD`，或日期无法解析：`invalid`。
 - `updated_at` 距当前日期超过 30 天：`stale`。
 - `profile_status: generated`，`updated_at` 距当前日期不超过 30 天，且没有模板占位：`fresh`。
@@ -33,7 +34,8 @@ description: 面向中文 flomo 用户的“保存提醒”技能。用于在 AI
 根据状态处理：
 
 - `fresh`：直接读取 `user-style.md`。
-- `missing` / `empty` / `stale`：先尝试生成或刷新画像，再继续当前任务。
+- `missing` / `empty` / `needs_setup`：先做首次设置，再尝试生成画像。
+- `stale`：继续当前任务，不阻塞；任务结束后或用户同意时刷新画像。
 - `invalid`：不要相信当前画像，先尝试修复或重建。
 
 不得在没有检查画像状态的情况下直接走 fallback。
@@ -46,6 +48,26 @@ fallback 只能作为降级路径，且必须满足至少一个条件：
 - 用户明确要求“先别读取我的笔记，直接给草稿”。
 
 进入 fallback 时要明说：没有成功读取或生成用户画像，所以这次使用保守草稿。
+
+## 首次设置
+
+如果 `user-style.md` 中 `reminder_mode: unset`，先问用户一个简短问题，不要先读取 flomo memo 样本：
+
+```markdown
+你希望 flomo 保存提醒怎么工作？
+
+1. 只在我说“保存/记一下”时使用
+2. 我让你扫描当前对话时，帮我挑值得保存的内容
+3. 本轮对话里，看到特别值得留的内容可以轻提醒
+```
+
+根据用户选择写入 `user-style.md`：
+
+- `explicit_only`：只在用户明确说保存、记一下、整理成 flomo 时使用。
+- `scan_on_request`：用户要求扫描当前对话时，集中判断哪些内容值得保存。
+- `session_light`：仅本轮或用户授权的会话中，允许低频轻提醒。
+
+默认推荐 `scan_on_request`。不要默认开启全局主动提醒。
 
 ## 五个保存入口
 
@@ -156,6 +178,7 @@ fallback 只能作为降级路径，且必须满足至少一个条件：
 # flomo 用户风格画像
 
 profile_status: generated
+reminder_mode: scan_on_request
 updated_at: YYYY-MM-DD
 sample_window: YYYY-MM-DD 至 YYYY-MM-DD
 sample_count: 50
@@ -199,6 +222,7 @@ sample_count: 50
 生成后必须写回 `user-style.md`，并填写：
 
 - `profile_status: generated`
+- `reminder_mode`
 - `updated_at`
 - `sample_window`
 - `sample_count`
