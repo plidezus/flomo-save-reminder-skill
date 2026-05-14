@@ -1,4 +1,4 @@
 interface:
   display_name: "flomo 保存提醒"
   short_description: "在用户要求时，把对话整理成 flomo memo 草稿。"
-  default_prompt: "用 flomo 保存提醒处理这段对话：先读取共享 flomo 用户表达画像和保存提醒状态，再按我的 memo 风格整理草稿。"
+  default_prompt: "用 flomo 保存提醒处理这段对话：先读取共享 flomo profile，再按我的 memo 风格整理草稿。"

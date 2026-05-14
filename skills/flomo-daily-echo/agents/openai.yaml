@@ -1,4 +1,4 @@
 interface:
   display_name: "flomo 昨日回声"
   short_description: "在用户要求时，从昨天 memo 和相关旧 memo 里生成一条可讨论的回声。"
-  default_prompt: "用 flomo Daily Echo 处理：读取 state 和共享 flomo 用户表达画像，拉取目标日期 memo 与相关旧 memo，生成一条可讨论的昨日回声。"
+  default_prompt: "用 flomo Daily Echo 处理：读取共享 flomo profile，拉取目标日期 memo 与相关旧 memo，生成一条可讨论的昨日回声。"

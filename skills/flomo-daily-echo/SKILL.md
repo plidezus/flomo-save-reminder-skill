@@ -20,24 +20,16 @@ description: 基于用户昨日 flomo memo 和相关旧 memo 生成一条可讨�
 ## 文件结构
 
 - `SKILL.md`：稳定协议，写触发、证据要求、输出边界和失败处理。
-- `state.md`：本 skill 的交互状态，写主动性、频率、回声数量、证据深度和讨论风格。
-- `../flomo-shared/user-style.md`：共享 flomo 用户表达画像，写用户在 flomo 中的标签、长度、语气、保存倾向和草稿风格。
+- `../flomo-shared/SKILL.md`：共享 profile 的初始化、刷新和旧版本迁移协议。
+- `../flomo-shared/profile.md`：共享 flomo profile，包含表达画像和用户明确确认过的偏好。
 
 不要把具体用户标签、长期身份判断或个人内容写进 `SKILL.md`。
 
 ## 启动检查
 
-每次使用本 skill 前，先读取：
+每次使用本 skill 前，先读取 `../flomo-shared/profile.md`。
 
-1. `state.md`
-2. `../flomo-shared/user-style.md`
-
-`state.md` 状态：
-
-- 文件不存在、为空、`state_status` 不是 `configured`：`needs_setup`。
-- `state_status: configured`：`ready`。
-
-共享表达画像状态：
+profile 状态：
 
 - 文件不存在：`missing`。
 - 文件为空、仍包含“待生成”、`profile_status: empty`，或 `updated_at` 为空：`empty`。
@@ -47,9 +39,8 @@ description: 基于用户昨日 flomo memo 和相关旧 memo 生成一条可讨�
 
 处理规则：
 
-- `state ready` + `profile fresh`：直接执行。
-- `state needs_setup`：先用保守默认值执行；如果用户要长期使用，再询问偏好并写入 `state.md`。
-- `profile missing` / `profile empty`：可以继续执行，但要说明没有共享表达画像，只能使用保守口吻；不要现场伪造画像。
+- `profile fresh`：直接执行。
+- `profile missing` / `profile empty`：可以先询问是否用 `../flomo-shared/SKILL.md` 初始化；如果用户跳过，继续执行但说明没有共享 profile，只能使用保守口吻。
 - `profile stale`：继续执行，不阻塞；输出后可提示画像可能需要刷新。
 - `profile invalid`：不要相信当前画像，使用保守默认规则。
 
@@ -75,10 +66,11 @@ description: 基于用户昨日 flomo memo 和相关旧 memo 生成一条可讨�
 1. **用户明确指令**
    - 日期、范围、输出长度、是否要尖锐或保守，优先遵守。
 
-2. **`state.md`**
-   - 控制主动性、最大回声数量、无张力是否沉默、证据深度和讨论风格。
+2. **共享 profile 的 User Preferences**
+   - 控制最大回声数量、无张力是否沉默、Tips 是否已展示等轻量偏好。
+   - 这些偏好只能由用户明确确认后写入，不能从 memo 样本推断。
 
-3. **共享表达画像**
+3. **共享 profile 的 Expression Profile**
    - 用于控制语气、长度、标签敏感度和什么内容更可能值得保存。
    - 共享画像只描述 flomo 表达习惯，不决定本 skill 是否主动。
    - 参考共享画像里的判断结构和边界感，不照搬 memo 的表面文体。
@@ -208,7 +200,7 @@ V0.1 使用“相关笔记 + 关键词/主题 + 标签”的混合检索。
 
 ### 5. 生成一条主回声
 
-默认只输出 1 条主回声。只有当 `state.md` 明确允许时，才输出 2-3 条。
+默认只输出 1 条主回声。只有当 `profile.md` 的 `User Preferences / Daily Echo / max_echo_count` 明确允许时，才输出 2-3 条。
 
 输出前先判断输出状态：
 
@@ -253,7 +245,7 @@ V0.1 使用“相关笔记 + 关键词/主题 + 标签”的混合检索。
 - 不要夸用户。
 - 不要替用户做最终结论。
 
-共享表达画像的使用边界：
+共享 profile 的使用边界：
 
 - 值得参考：
   - 判断结构，如“不是 A，而是 B”“真正的问题是……”“核心不是……”。
@@ -273,7 +265,7 @@ V0.1 使用“相关笔记 + 关键词/主题 + 标签”的混合检索。
 如果用户说“这个可以存”“整理成 flomo”“保存这段讨论”，交给 `flomo-save-reminder`：
 
 1. 使用本轮讨论作为输入。
-2. 读取共享表达画像。
+2. 读取共享 profile。
 3. 生成 memo 草稿。
 4. 用户确认后再写入。
 
@@ -327,7 +319,7 @@ Tips 必须和正文之间至少空两行，避免用户误以为它是回声内
 - 找不到相关旧 memo：输出“昨日观察”，不要叫“回声”。
 - 没有明显张力：如果配置为沉默，就只做简短说明，不生成日报。
 - 昨日 memo 缺少 slug 或 slug 相关笔记接口失败：使用关键词 / 主题 / 标签搜索补足，并保持判断克制。
-- 共享表达画像缺失：使用保守口吻，不假装已按用户风格生成。
+- 共享 profile 缺失：使用保守口吻，不假装已按用户风格生成。
 - 只能用关键词检索：判断要克制，避免过度概括。
 - 输出后用户无回应：停止，不追问。
 - 用户要求保存：交给 `flomo-save-reminder`，本 skill 不直接写入。
@@ -345,7 +337,7 @@ Tips 必须和正文之间至少空两行，避免用户误以为它是回声内
 - 输出只有一个主问题。
 - 第一次成功输出后：可以轻露出每日检查能力，但不直接推定时。
 - 用户说“保存这段”：转交 `flomo-save-reminder`，写入前确认。
-- 共享画像过期：继续执行，但不阻塞。
+- 共享 profile 过期：继续执行，但不阻塞。
 
 ## 成功标准
 

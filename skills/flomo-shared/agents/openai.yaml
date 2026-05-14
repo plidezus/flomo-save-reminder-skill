@@ -1,0 +1,4 @@
+interface:
+  display_name: "flomo 共享画像"
+  short_description: "初始化或刷新 flomo skills 共用的 profile。"
+  default_prompt: "初始化或刷新 flomo 共享 profile：读取真实 flomo memo 样本，更新表达画像；只在我确认后写入偏好。"

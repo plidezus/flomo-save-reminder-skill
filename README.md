@@ -8,7 +8,7 @@
 
 - **flomo-save-reminder**：在 AI 对话里发现值得留下的内容，按你自己的写法整理成 memo 草稿，确认后再写入。让有价值的瞬间不溜走。
 - **flomo-daily-echo**：读取某一天的 memo 和相关旧 memo，从中找一条新旧之间真实存在的张力，生成一条可以继续讨论的「回声」，不是日报。让存下来的内容不只是躺着。
-- **flomo-shared**：共享的 flomo 用户表达画像，让两个 skill 用同一种「你的写法」，互不污染。
+- **flomo-shared**：共享的 flomo profile，负责初始化 / 刷新你的表达画像，也保存你明确确认过的轻量偏好。
 
 它们都不抢着替你做事，只在该停一下的时候停一下。
 
@@ -16,7 +16,7 @@
 
 - **触发要窄**：普通聊天不会因为出现「想法」「记录」「flomo」等词就自动触发。
 - **用户保留刹车**：写入 flomo、开启主动提醒、设置定时，都需要明确授权。
-- **你的写法只学一次**：两个 skill 共用同一份写作画像；每个 skill 多主动、是否自动化，各自记自己的。
+- **你的写法只学一次**：两个 skill 共用同一份 profile；画像来自样本，主动性和授权只来自你的明确确认。
 - **样本优先**：个性化来自真实 memo 样本和你确认保存过的内容，不来自 AI 想象。
 - **失败诚实**：读不到东西就说读不到，不假装做了。
 
@@ -37,7 +37,7 @@
 - AI 自己冒出来一段总结，但你没接话
 - 只有链接、摘录或信息转述，没有你自己的反应
 
-首次使用会先问你希望保存提醒多主动，再生成或读取你的写作画像。默认只起草和提醒，写入前确认。
+首次使用会先问你希望保存提醒多主动，再生成或读取共享 profile。默认只起草和提醒，写入前确认。
 
 ## flomo-daily-echo
 
@@ -105,7 +105,7 @@ skills/flomo-daily-echo/SKILL.md
 
 使用前确认 agent 具备这些能力：
 
-- 能读取同级或相邻 skill 目录下的 `state.md` 和 `../flomo-shared/user-style.md`
+- 能读取相邻 skill 目录下的 `../flomo-shared/SKILL.md` 和 `../flomo-shared/profile.md`
 - 能访问 flomo MCP，或等价的 memo 搜索、相关笔记、创建、标签规范和用户 memory 工具
 - 能在写入 flomo 前先让用户确认
 
@@ -114,25 +114,26 @@ skills/flomo-daily-echo/SKILL.md
 ```text
 skills/
   flomo-shared/
-    user-style.md
+    SKILL.md
+    profile.md
+    agents/openai.yaml
   flomo-save-reminder/
     SKILL.md
-    state.md
     agents/openai.yaml
   flomo-daily-echo/
     SKILL.md
-    state.md
     agents/openai.yaml
 ```
 
-各 skill 的 `state.md` 存自己的交互偏好（要不要主动提醒、什么时候沉默等），`flomo-shared/user-style.md` 存共享的写作画像。字段细节看对应文件。
+`flomo-shared/SKILL.md` 定义 profile 的初始化、刷新和旧版本迁移；`profile.md` 存共享画像和用户明确确认过的轻量偏好。保存提醒和昨日回声不各自生成画像，只读取共享 profile。
+
+旧版本如果已有 `flomo-save-reminder/user-style.md` 或 `state.md`，新版会在首次需要 profile 时提示迁移。画像可以迁移，明确授权过的偏好可以迁移，临时运行状态不迁移。
 
 ## 隐私边界
 
 这个公开仓库只放通用协议和空模板：
 
 - `SKILL.md`
-- `state.md`
 - `agents/openai.yaml`
 - 空结构共享画像
 
@@ -142,7 +143,7 @@ skills/
 - 你的标签画像
 - flomo 导出数据
 - MCP 返回样本
-- 个人化后的 `flomo-shared/user-style.md`
+- 个人化后的 `flomo-shared/profile.md`
 
 ## 想 fork 或贡献的话
 
