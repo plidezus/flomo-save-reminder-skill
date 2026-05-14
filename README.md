@@ -91,7 +91,7 @@ cp -R skills/flomo-save-reminder ~/.codex/skills/
 也可以让助手从 GitHub 安装：
 
 ```text
-Install the skills from https://github.com/plidezus/flomo-save-reminder-skill/tree/main/skills
+Install the skills from https://github.com/plidezus/flomo-skills/tree/main/skills
 ```
 
 ### 其他 Agent 环境
