@@ -118,7 +118,6 @@ skills/
   flomo-save-reminder/
     SKILL.md
     state.md
-    user-style.md
     agents/openai.yaml
   flomo-daily-echo/
     SKILL.md
